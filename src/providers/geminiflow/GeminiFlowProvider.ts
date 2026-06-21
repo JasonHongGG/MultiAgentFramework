@@ -1,5 +1,5 @@
 import { AIProvider } from '../AIProvider';
-import { GenerateRequest, GenerateResponse } from '../../types';
+import { GenerateRequest, GenerateResponse, GenerateStreamChunk } from '../../types';
 import { GeminiFlowClient } from './sdk/client';
 
 export class GeminiFlowProvider implements AIProvider {
@@ -35,6 +35,34 @@ export class GeminiFlowProvider implements AIProvider {
       };
     } catch (error) {
       console.error('GeminiFlow Provider Error:', error);
+      throw error;
+    }
+  }
+
+  async *generateStream(request: GenerateRequest): AsyncGenerator<GenerateStreamChunk, void, unknown> {
+    try {
+      const stream = this.client.stream(
+        request.prompt,
+        request.systemPrompt,
+        this.model,
+        'zh-TW', // Default language
+        request.images,
+        request.sessionId,
+        false
+      );
+
+      for await (const chunk of stream) {
+        yield {
+          text: chunk.text,
+          metadata: {
+            provider: this.name,
+            model: this.model,
+            images: chunk.images,
+          }
+        };
+      }
+    } catch (error) {
+      console.error('GeminiFlow Provider Stream Error:', error);
       throw error;
     }
   }
