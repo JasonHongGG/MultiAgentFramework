@@ -7,7 +7,7 @@ export class AgentLogger {
   constructor(private name: string) {
     // Determine the project root assuming this file is in src/logger/
     const projectRoot = path.resolve(__dirname, '../../');
-    this.logDir = path.join(projectRoot, 'logs');
+    this.logDir = path.join(projectRoot, '.runtime', 'logs');
   }
 
   private async ensureLogDir() {
