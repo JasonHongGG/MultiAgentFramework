@@ -1,60 +1,83 @@
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
-import dayjs from 'dayjs';
-import { v4 as uuidv4 } from 'uuid';
-
-export interface LogEntry {
-  type: 'request' | 'response' | 'info' | 'error';
-  message: string;
-  metadata?: Record<string, any>;
-  timestamp?: string;
-}
 
 export class AgentLogger {
-  private logFilePath: string;
+  private logDir: string;
 
-  constructor(public agentName: string) {
-    // Format: 目標名稱_yyyymmdd_hhmmss_自行設計
-    const timestamp = dayjs().format('YYYYMMDD_HHmmss');
-    const uuid = uuidv4().substring(0, 8); // short uuid
-    const filename = `${agentName}_${timestamp}_${uuid}.log`;
-    
-    const logsDir = path.join(process.cwd(), 'logs');
-    if (!fs.existsSync(logsDir)) {
-      fs.mkdirSync(logsDir, { recursive: true });
+  constructor(private name: string) {
+    // Determine the project root assuming this file is in src/logger/
+    const projectRoot = path.resolve(__dirname, '../../');
+    this.logDir = path.join(projectRoot, 'logs');
+  }
+
+  private async ensureLogDir() {
+    try {
+      await fs.access(this.logDir);
+    } catch {
+      await fs.mkdir(this.logDir, { recursive: true });
     }
-
-    this.logFilePath = path.join(logsDir, filename);
   }
 
-  private write(entry: LogEntry) {
-    const timestamp = dayjs().toISOString();
-    const logData = JSON.stringify({
-      timestamp,
-      type: entry.type,
-      message: entry.message,
-      metadata: entry.metadata,
-    });
-    fs.appendFileSync(this.logFilePath, logData + '\n');
+  private async writeLog(level: string, message: string, data?: any) {
+    try {
+      await this.ensureLogDir();
+      const now = new Date();
+      
+      // Format YYYYMMDD_HHMMSS
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      const timestamp = `${year}${month}${day}_${hours}${minutes}${seconds}`;
+      
+      // Random ID to prevent collisions
+      const randomId = Math.random().toString(36).substring(2, 8);
+      
+      // agentName_YYYYMMDD_HHMMSS_randomId.json
+      const fileName = `${this.name}_${timestamp}_${randomId}.json`;
+      const filePath = path.join(this.logDir, fileName);
+
+      const logEntry = {
+        agentName: this.name,
+        timestamp: now.toISOString(),
+        level,
+        message,
+        ...data
+      };
+
+      await fs.writeFile(filePath, JSON.stringify(logEntry, null, 2), 'utf-8');
+      
+    } catch (err) {
+      console.error(`[${this.name}] Failed to write log to file:`, err);
+    }
   }
 
-  request(message: string, metadata?: Record<string, any>) {
-    this.write({ type: 'request', message, metadata });
-    console.log(`[${this.agentName}] REQUEST: ${message}`);
+  logExecution(request: any, response: any, metadata: any = {}) {
+    // Fire and forget (asynchronous logging)
+    this.writeLog('EXECUTION', 'Agent execution completed', {
+      request,
+      response,
+      metadata
+    }).catch(console.error);
   }
 
-  response(message: string, metadata?: Record<string, any>) {
-    this.write({ type: 'response', message, metadata });
-    console.log(`[${this.agentName}] RESPONSE: ${message}`);
+  info(message: string, ...args: any[]) {
+    console.log(`[${this.name}] INFO: ${message}`, ...args);
   }
 
-  info(message: string, metadata?: Record<string, any>) {
-    this.write({ type: 'info', message, metadata });
-    console.log(`[${this.agentName}] INFO: ${message}`);
+  warn(message: string, ...args: any[]) {
+    console.warn(`[${this.name}] WARN: ${message}`, ...args);
   }
 
-  error(message: string, metadata?: Record<string, any>) {
-    this.write({ type: 'error', message, metadata });
-    console.error(`[${this.agentName}] ERROR: ${message}`);
+  error(message: string, ...args: any[]) {
+    console.error(`[${this.name}] ERROR: ${message}`, ...args);
+    // Write errors to file as well
+    this.writeLog('ERROR', message, { args }).catch(console.error);
+  }
+
+  debug(message: string, ...args: any[]) {
+    console.debug(`[${this.name}] DEBUG: ${message}`, ...args);
   }
 }

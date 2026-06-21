@@ -1,5 +1,5 @@
 {
-  "name": "multiagent",
+  "name": "multiagentframework",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -11,14 +11,11 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "dayjs": "^1.11.21",
-    "dotenv": "^17.4.2",
-    "uuid": "^14.0.0"
+    "dotenv": "^17.4.2"
   },
   "devDependencies": {
-    "@types/node": "^25.9.3",
-    "@types/uuid": "^10.0.0",
-    "tsx": "^4.22.4",
+    "@types/node": "^26.0.0",
+    "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
   }
 }
