@@ -27,7 +27,7 @@ export class VertexAIProvider implements AIProvider {
         temperature: request.temperature ?? 0.2,
         maxOutputTokens: request.maxTokens ?? 3000,
       },
-      systemInstruction: request.systemPrompt ? { role: 'system', parts: [{ text: request.systemPrompt }] } : undefined,
+      ...(request.systemPrompt ? { systemInstruction: { role: 'system', parts: [{ text: request.systemPrompt }] } } : {}),
     });
 
     try {
@@ -41,7 +41,7 @@ export class VertexAIProvider implements AIProvider {
         throw new Error('Unexpected Vertex AI response format: missing content parts.');
       }
 
-      const text = candidate.content.parts[0].text || '';
+      const text = candidate.content.parts[0]?.text || '';
       const usageMetadata = response.usageMetadata || {};
 
       return {
@@ -76,7 +76,7 @@ export class VertexAIProvider implements AIProvider {
         temperature: request.temperature ?? 0.2,
         maxOutputTokens: request.maxTokens ?? 3000,
       },
-      systemInstruction: request.systemPrompt ? { role: 'system', parts: [{ text: request.systemPrompt }] } : undefined,
+      ...(request.systemPrompt ? { systemInstruction: { role: 'system', parts: [{ text: request.systemPrompt }] } } : {}),
     });
 
     try {
@@ -93,11 +93,13 @@ export class VertexAIProvider implements AIProvider {
         yield {
           text: textChunk,
           isFinished: !!isFinished,
-          usage: usageMetadata ? {
-            promptTokens: usageMetadata.promptTokenCount || 0,
-            completionTokens: usageMetadata.candidatesTokenCount || 0,
-            totalTokens: usageMetadata.totalTokenCount || 0,
-          } : undefined,
+          ...(usageMetadata ? {
+            usage: {
+              promptTokens: usageMetadata.promptTokenCount || 0,
+              completionTokens: usageMetadata.candidatesTokenCount || 0,
+              totalTokens: usageMetadata.totalTokenCount || 0,
+            }
+          } : {}),
           metadata: {
             provider: this.name,
             model: this.model,
